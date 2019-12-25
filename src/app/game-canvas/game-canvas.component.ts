@@ -1,5 +1,5 @@
 import {Component, OnInit, ViewChild} from '@angular/core';
-import {GameStateService} from '../../services/game-state.service';
+import {BotService} from '../../services/game-state.service';
 
 @Component({
   selector: 'app-game-canvas',
@@ -10,12 +10,8 @@ export class GameCanvasComponent implements OnInit {
 
   @ViewChild('gameCanvas', {static: false}) gameCanvas;
 
-  private x: number;
-  private y: number;
-  private ballRadius: number;
-
   constructor(
-    private gameStateService: GameStateService
+    private BotService: BotService
   ) {
   }
 
@@ -25,8 +21,6 @@ export class GameCanvasComponent implements OnInit {
   ngAfterViewInit() {
     const canvas = this.gameCanvas.nativeElement;
 
-    this.x = canvas.width / 2;
-    this.y = canvas.height - 30;
     this.go();
   }
 
@@ -51,12 +45,11 @@ export class GameCanvasComponent implements OnInit {
 
   go = () => {
     const canvas = this.getCanvasEl();
-    console.log(canvas.width, canvas.height)
     const ctx = this.getCanvasContext();
-    const gameState = this.gameStateService.updateGameState(canvas.width, canvas.height);
+    const Bot = this.BotService.updateBot(canvas.width, canvas.height);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    gameState.forEach(state => this.drawBots(state));
+    Bot.forEach(state => this.drawBots(state));
 
     requestAnimationFrame(this.go)
 
