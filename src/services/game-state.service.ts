@@ -157,7 +157,7 @@ export class BotService {
       if(pregnant + gestationTime < Date.now()) {
         const babyBot = this.generateRandomBot(speciesId, { x, y }, color)
         this.babyBots.push(babyBot);
-        
+
         return { pregnant: null }
       }
     }
@@ -209,8 +209,8 @@ export class BotService {
   private getGrowthFoodRequirement(growSpeed: number, radius: number, maxRadius: number): number {
     if(radius === maxRadius) return 0;
 
-    const compareNum = 2500 - growSpeed;
-    const dieRoll = _.random(0, 2500);
+    const compareNum = 5000 - growSpeed;
+    const dieRoll = _.random(0, 5000);
 
     if(dieRoll > compareNum) {
       return growSpeed * 3
