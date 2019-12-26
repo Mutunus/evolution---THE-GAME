@@ -46,7 +46,7 @@ export class GameCanvasComponent implements OnInit {
   go = () => {
     const canvas = this.getCanvasEl();
     const ctx = this.getCanvasContext();
-    const Bot = this.BotService.updateBot(canvas.width, canvas.height);
+    const Bot = this.BotService.nextTurn(canvas.width, canvas.height);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     Bot.forEach(state => this.drawBots(state));

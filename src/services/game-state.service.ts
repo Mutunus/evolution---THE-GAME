@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import * as _ from 'lodash';
 import { v4 } from 'uuid';
+import { GameEngineService } from './game-engine.service';
 
 @Injectable({
   providedIn: 'root'
@@ -8,14 +9,40 @@ import { v4 } from 'uuid';
 export class BotService {
 
   public bots: Bot[];
-  private colors: string[];
+  public food: Food[];
 
-  constructor() {
-    this.generateRandomColors()
+  private colors: string[];
+  private foodDict: Map<{ x: number, y: number }, Food>
+
+  constructor(
+    private gameEngine: GameEngineService
+  ) {
+    this.generateRandomColors();
+    this.foodDict = new Map();
   }
 
-  // TODO - store all bots
-  // TODO - bots eat food
+  public nextTurn(canvasWidth: number, canvasHeight: number): Bot[] | Food[] {
+    if(!this.bots) {
+      this.bots = this.generateRandomBots(canvasWidth, canvasHeight, 40, 4);
+      this.food = this.generateRandomFood(canvasWidth, canvasHeight, 0)
+    }
+    else {
+      this.bots = this.bots
+      .map(bot => this.botNextTurn(bot, canvasWidth, canvasHeight))
+      .filter(bot => !bot.dead);
+      this.food = this.food.filter(food => !food.dead)
+    }
+
+    return [ ...this.bots, ...this.food ]
+    
+    // TODO - plant bots
+    // TODO - see surroundings
+    // TODO - DIE
+    // TODO - eat + grow
+    // TODO - pick up food
+    // TODO - resolve combat
+    // TODO - reproduce
+  }
 
   generateRandomColors() {
     this.colors = _.fill(Array(10), null).map(x => '#'+Math.floor(Math.random()*16777215).toString(16))
@@ -27,11 +54,13 @@ export class BotService {
     
     for(species; species > 0; species--) {
       const speciesId = v4();
-      const speciesStartingPos = this.generateRandomStartingPos(canvasWidth, canvasHeight);
+
+      // TODO - ensure bots of same species spawn bunch together
       const speciesColor = this.generateRandomSpeciesColor(species);
 
       for(let i = botsPerSpecies; i > 0; i--) {
-        const newBot = this.generateRandomBot(speciesId, speciesStartingPos, speciesColor);
+        const botPos = this.generateRandomStartingPos(canvasWidth, canvasHeight, bots);
+        const newBot = this.generateRandomBot(speciesId, botPos, speciesColor);
         bots.push(newBot);
       }
     }
@@ -39,15 +68,37 @@ export class BotService {
     return bots;
   }
 
+  private generateRandomFood(canvasWidth: number, canvasHeight: number, total: number): Food[] {
+    let food = []
+
+    for(total; total > 0; total--) {
+      const position = this.generateRandomStartingPos(canvasWidth, canvasHeight, food);
+      if(this.foodDict && this.foodDict.has(position)) {
+        total++;
+      }
+      else {
+        const newFood = new Food(position);
+
+        food.push(newFood);
+        this.foodDict.set(position, newFood);
+      }
+    }
+
+    return food;
+  }
+
   private generateRandomSpeciesColor(index: number) {
     return this.colors[index];
   }
 
-  private generateRandomStartingPos(canvasWidth: number, canvasHeight: number): { x: number, y: number } {
-    return {
-      x: _.random(BaseRadius, canvasWidth - BaseRadius),
-      y: _.random(BaseRadius, canvasHeight - BaseRadius)
+  private generateRandomStartingPos(canvasWidth: number, canvasHeight: number, bots: Bot[] | Food[]): { x: number, y: number } {
+    const x = _.random(BaseRadius, canvasWidth - BaseRadius)
+    const y = _.random(BaseRadius, canvasHeight - BaseRadius)
+
+    if(bots.some(bot => this.gameEngine.areColliding(x, y, bot.x, bot.y, BaseRadius, bot.radius))) {
+      return this.generateRandomStartingPos(canvasWidth, canvasHeight, bots)
     }
+    else return { x, y }
   }
 
   private generateRandomBot(speciesId: string, startingPos: { x: number, y: number }, color: string): Bot {
@@ -67,39 +118,26 @@ export class BotService {
     }
   }
 
-  public updateBot(canvasWidth: number, canvasHeight: number): Bot[] {
-    if(!this.bots) {
-      this.bots = this.generateRandomBots(canvasWidth, canvasHeight, 20, 4);
-      return this.bots;
-    }
-    this.bots = this.bots
-    .map(bot => this.botNextTurn(bot, canvasWidth, canvasHeight))
-    .filter(Boolean)
-
-    return this.bots
-    
-    // TODO - plant bots
-    // TODO - see surroundings
-    // TODO - DIE
-    // TODO - eat + grow
-    // TODO - pick up food
-    // TODO - resolve combat
-    // TODO - reproduce
-  }
-
   private reproduce() {
     // TODO reproduce asexually
     // TODO - reproduce sexually
   }
 
-  private botNextTurn(bot: Bot, canvasWidth: number, canvasHeight: number) {
+  private botCollideWithFood(botPosition: { x: number, y: number }) {
+    if(this.foodDict.has(botPosition)) {
+      this.foodDict.delete
+    }
+  }
+
+  private botNextTurn(bot: Bot, canvasWidth: number, canvasHeight: number): Bot {
     // TODO - do bot stuff, mutate state
     const newPosition = this.calcPostion(bot, canvasWidth, canvasHeight);
     const newFoodAndRadius = this.eatFoodAndGrow(bot)
+    this.botCollideWithFood(newPosition)
 
     // if any of these returned false, then the bot is a dead mofo
     if(!newFoodAndRadius) {
-      return
+      return { ...bot, dead: true }
     }
     
     return {...bot, ...newPosition, ...newFoodAndRadius };
@@ -152,8 +190,6 @@ export class BotService {
       dy = -dy;
     }
 
-    console.log(collideX, collideY)
-
     if(collideX || collideY) {
       return { x: currentX + (dx * speed), y: currentY + (dy * speed), dx, dy } 
     }
@@ -204,6 +240,24 @@ export interface Bot {
   pregnant: number;
   gestationTime: number;
   food: number;
+  dead?: boolean;
+}
+
+export class Food {
+  x: number;
+  y: number;
+  food: number;
+  radius: number;
+  color: string;
+  dead?: boolean;
+
+  constructor(params = {}) {
+    this.x = _.get(params, 'x', 10);
+    this.y = _.get(params, 'y', 10);
+    this.food = _.get(params, 'food', 500);
+    this.radius = _.get(params, 'radius', 10);
+    this.color = _.get(params, 'color', '#65ff00')
+  }
 }
 
 const BaseRadius = 6
