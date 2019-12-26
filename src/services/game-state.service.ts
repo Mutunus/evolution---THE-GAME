@@ -9,6 +9,7 @@ import { GameEngineService } from './game-engine.service';
 export class BotService {
 
   public bots: Bot[];
+  private babyBots: Bot[];
   public food: Food[];
 
   private colors: string[];
@@ -17,6 +18,7 @@ export class BotService {
     private gameEngine: GameEngineService
   ) {
     this.generateRandomColors();
+    this.babyBots = [];
   }
 
   public nextTurn(canvasWidth: number, canvasHeight: number): Bot[] | Food[] {
@@ -33,11 +35,37 @@ export class BotService {
       this.food = this.food.filter(food => !food.dead)
     }
     
+    // TODO - form input for settings
     // TODO - spatial awareness
     // TODO - resolve combat
-    // TODO - reproduce
+    // TODO - reproduce sexually
+
+    // if any of the bots have given birth then add them to the bots array
+    if(this.babyBots.length) {
+      this.addBabyBots()
+    }
 
     return [ ...this.bots, ...this.food ]
+  }
+
+  private botNextTurn(bot: Bot, canvasWidth: number, canvasHeight: number): Bot {
+    // TODO - do bot stuff, mutate state
+    const newPosition = this.calcPostion(bot, canvasWidth, canvasHeight);
+    const newFoodAndRadius = this.eatFoodAndGrow(bot)
+    const newAge = this.ageBots(bot)
+    // if any of these returned false, then the bot is a dead mofo
+    if(!newFoodAndRadius) {
+      return { ...bot, dead: true }
+    }
+    
+    const newPregnant = this.reproduce(bot)
+    
+    return {...bot, ...newPosition, ...newFoodAndRadius, ...newAge, ...newPregnant };
+  }
+
+  private addBabyBots(): void {
+    this.bots = [...this.bots, ...this.babyBots]
+    this.babyBots = []
   }
 
   generateRandomColors() {
@@ -110,15 +138,34 @@ export class BotService {
       growSpeed: BaseGrowSpeed,
       dx: _.random(0, 1) ? 1 : -1, 
       dy: _.random(0, 1) ? 1 : -1, 
-      pregnant: 0,
-      gestationTime: 6,
+      pregnant: null,
+      gestationTime: BaseGestationTime,
       food: BaseFood
     }
   }
 
-  private reproduce() {
-    // TODO reproduce asexually
-    // TODO - reproduce sexually
+  private reproduce({ speciesId, pregnant, gestationTime, x, y, color, radius, maxRadius }: Bot): { pregnant: number } {
+    if(!this.botIsAdult(radius, maxRadius)) return
+    
+    if(!pregnant) {
+      // chance that the bot will fertilize itself
+      if(_.random(1, 600) === 1) {
+        return { pregnant: Date.now() }
+      }
+    }
+    else {
+      if(pregnant + gestationTime < Date.now()) {
+        const babyBot = this.generateRandomBot(speciesId, { x, y }, color)
+        this.babyBots.push(babyBot);
+        
+        return { pregnant: null }
+      }
+    }
+  }
+
+  private botIsAdult(radius: number, maxRadius: number): boolean {
+    // if bot is 80% size of max size, then it is considered an adult
+    return (radius / maxRadius) * 100 > 80
   }
 
   private botCollideWithFood(botX: number, botY: number, botRadius: number): number {
@@ -138,20 +185,6 @@ export class BotService {
       }
     }
     else return 0
-  }
-
-  private botNextTurn(bot: Bot, canvasWidth: number, canvasHeight: number): Bot {
-
-    // TODO - do bot stuff, mutate state
-    const newPosition = this.calcPostion(bot, canvasWidth, canvasHeight);
-    const newFoodAndRadius = this.eatFoodAndGrow(bot)
-    const newAge = this.ageBots(bot)
-    // if any of these returned false, then the bot is a dead mofo
-    if(!newFoodAndRadius) {
-      return { ...bot, dead: true }
-    }
-    
-    return {...bot, ...newPosition, ...newFoodAndRadius, ...newAge };
   }
 
   private eatFoodAndGrow({ x, y, food, growSpeed, speed, radius, maxRadius }: Bot): { food: number, radius: number } {
@@ -282,3 +315,4 @@ const BaseMaxRadius = 20
 const BaseSpeed = 1;
 const BaseGrowSpeed = 25;
 const BaseFood = 50000
+const BaseGestationTime = 5000
