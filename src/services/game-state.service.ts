@@ -32,17 +32,12 @@ export class BotService {
       this.spawnFood(canvasWidth, canvasHeight, 2, this.food)
       this.food = this.food.filter(food => !food.dead)
     }
-
-
-    return [ ...this.bots, ...this.food ]
     
-    // TODO - plant bots
     // TODO - spatial awareness
-    // TODO - DIE
-    // TODO - eat + grow
-    // TODO - pick up food
     // TODO - resolve combat
     // TODO - reproduce
+
+    return [ ...this.bots, ...this.food ]
   }
 
   generateRandomColors() {
@@ -50,7 +45,7 @@ export class BotService {
   }
 
   private spawnFood(canvasWidth: number, canvasHeight: number, total: number, food: Food[]): void {
-    if(_.random(1, 100) === 1) {
+    if(_.random(1, 60) === 1) {
       const newFood = this.generateRandomFood(canvasWidth, canvasHeight, total, food);
       
       this.food = [...food, ...newFood]
@@ -111,6 +106,7 @@ export class BotService {
       radius: BaseRadius,
       maxRadius: BaseMaxRadius,
       speed: BaseSpeed,
+      age: 0,
       growSpeed: BaseGrowSpeed,
       dx: _.random(0, 1) ? 1 : -1, 
       dy: _.random(0, 1) ? 1 : -1, 
@@ -149,13 +145,13 @@ export class BotService {
     // TODO - do bot stuff, mutate state
     const newPosition = this.calcPostion(bot, canvasWidth, canvasHeight);
     const newFoodAndRadius = this.eatFoodAndGrow(bot)
-
+    const newAge = this.ageBots(bot)
     // if any of these returned false, then the bot is a dead mofo
     if(!newFoodAndRadius) {
       return { ...bot, dead: true }
     }
-
-    return {...bot, ...newPosition, ...newFoodAndRadius };
+    
+    return {...bot, ...newPosition, ...newFoodAndRadius, ...newAge };
   }
 
   private eatFoodAndGrow({ x, y, food, growSpeed, speed, radius, maxRadius }: Bot): { food: number, radius: number } {
@@ -171,6 +167,10 @@ export class BotService {
 
       return { food: (food + foodEaten) - foodConsumption, radius: newRadius }
     }
+  }
+
+  private ageBots({ age }: Bot): { age: number } {
+    return { age: age + 1 }
   }
 
   private getGrowthFoodRequirement(growSpeed: number, radius: number, maxRadius: number): number {
@@ -211,7 +211,7 @@ export class BotService {
     }
 
     // 9/10 keep going same direction
-    if(_.random(0, 10) > 1) {
+    if(_.random(0, 50) > 1) {
       return { x: currentX + (dx * speed), y: currentY + (dy * speed), dx, dy }
     }
     else {
@@ -252,6 +252,7 @@ export interface Bot {
   radius: number;
   maxRadius: number;
   speed: number;
+  age: number;
   growSpeed: number;
   pregnant: number;
   gestationTime: number;
