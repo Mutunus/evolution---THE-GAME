@@ -16,6 +16,7 @@ export class GameCanvasComponent implements OnInit {
   }
 
   ngOnInit() {
+    //document.addEventListener('mousemove', e => console.log(e.offsetX, e.offsetY))
   }
 
   ngAfterViewInit() {

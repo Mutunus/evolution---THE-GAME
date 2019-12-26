@@ -12,19 +12,17 @@ export class BotService {
   public food: Food[];
 
   private colors: string[];
-  private foodDict: Map<{ x: number, y: number }, Food>
 
   constructor(
     private gameEngine: GameEngineService
   ) {
     this.generateRandomColors();
-    this.foodDict = new Map();
   }
 
   public nextTurn(canvasWidth: number, canvasHeight: number): Bot[] | Food[] {
     if(!this.bots) {
+      this.food = this.generateRandomFood(canvasWidth, canvasHeight, 10)
       this.bots = this.generateRandomBots(canvasWidth, canvasHeight, 40, 4);
-      this.food = this.generateRandomFood(canvasWidth, canvasHeight, 0)
     }
     else {
       this.bots = this.bots
@@ -73,15 +71,9 @@ export class BotService {
 
     for(total; total > 0; total--) {
       const position = this.generateRandomStartingPos(canvasWidth, canvasHeight, food);
-      if(this.foodDict && this.foodDict.has(position)) {
-        total++;
-      }
-      else {
-        const newFood = new Food(position);
+      const newFood = new Food(position);
 
-        food.push(newFood);
-        this.foodDict.set(position, newFood);
-      }
+      food.push(newFood);
     }
 
     return food;
@@ -123,37 +115,52 @@ export class BotService {
     // TODO - reproduce sexually
   }
 
-  private botCollideWithFood(botPosition: { x: number, y: number }) {
-    if(this.foodDict.has(botPosition)) {
-      this.foodDict.delete
+  private botCollideWithFood(botX: number, botY: number, botRadius: number) {
+    const food = this.food.find(food => this.gameEngine.areColliding(food.x, food.y, botX, botY, food.radius, botRadius))
+    if(food) {
+      // bigger bots eat more food
+      const botFoodConsumption = botRadius * 100;
+      if(food.food - botFoodConsumption > 0) {
+        food.food = food.food - botFoodConsumption;
+
+        return botFoodConsumption
+      }
+      else {
+        _.pull(this.food, food);
+
+        return food.food;
+      }
     }
+    else return 0
   }
 
   private botNextTurn(bot: Bot, canvasWidth: number, canvasHeight: number): Bot {
+
     // TODO - do bot stuff, mutate state
     const newPosition = this.calcPostion(bot, canvasWidth, canvasHeight);
     const newFoodAndRadius = this.eatFoodAndGrow(bot)
-    this.botCollideWithFood(newPosition)
 
     // if any of these returned false, then the bot is a dead mofo
     if(!newFoodAndRadius) {
       return { ...bot, dead: true }
     }
+
     
     return {...bot, ...newPosition, ...newFoodAndRadius };
   }
 
-  private eatFoodAndGrow({ food, growSpeed, speed, radius, maxRadius }: Bot): { food: number, radius: number } {
+  private eatFoodAndGrow({ x, y, food, growSpeed, speed, radius, maxRadius }: Bot): { food: number, radius: number } {
+    const foodEaten = this.botCollideWithFood(x, y, radius)
     const foodNeededForGrowth = this.getGrowthFoodRequirement(growSpeed, radius, maxRadius)
     const foodConsumption = foodNeededForGrowth + (radius * (speed * 2));
 
-    if(foodConsumption > food) {
+    if(foodConsumption > (food + foodEaten)) {
       return
     }
     else {
       const newRadius = foodNeededForGrowth ? radius + 1 : radius;
 
-      return { food: food - foodConsumption, radius: newRadius }
+      return { food: (food + foodEaten) - foodConsumption, radius: newRadius }
     }
   }
 
@@ -254,7 +261,7 @@ export class Food {
   constructor(params = {}) {
     this.x = _.get(params, 'x', 10);
     this.y = _.get(params, 'y', 10);
-    this.food = _.get(params, 'food', 500);
+    this.food = _.get(params, 'food', 25000);
     this.radius = _.get(params, 'radius', 10);
     this.color = _.get(params, 'color', '#65ff00')
   }
