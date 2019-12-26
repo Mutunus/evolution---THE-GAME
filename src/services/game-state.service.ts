@@ -21,20 +21,23 @@ export class BotService {
 
   public nextTurn(canvasWidth: number, canvasHeight: number): Bot[] | Food[] {
     if(!this.bots) {
-      this.food = this.generateRandomFood(canvasWidth, canvasHeight, 10)
+      this.food = this.generateRandomFood(canvasWidth, canvasHeight, 10, [])
       this.bots = this.generateRandomBots(canvasWidth, canvasHeight, 40, 4);
     }
     else {
       this.bots = this.bots
       .map(bot => this.botNextTurn(bot, canvasWidth, canvasHeight))
       .filter(bot => !bot.dead);
+
+      this.spawnFood(canvasWidth, canvasHeight, 2, this.food)
       this.food = this.food.filter(food => !food.dead)
     }
+
 
     return [ ...this.bots, ...this.food ]
     
     // TODO - plant bots
-    // TODO - see surroundings
+    // TODO - spatial awareness
     // TODO - DIE
     // TODO - eat + grow
     // TODO - pick up food
@@ -44,6 +47,14 @@ export class BotService {
 
   generateRandomColors() {
     this.colors = _.fill(Array(10), null).map(x => '#'+Math.floor(Math.random()*16777215).toString(16))
+  }
+
+  private spawnFood(canvasWidth: number, canvasHeight: number, total: number, food: Food[]): void {
+    if(_.random(1, 100) === 1) {
+      const newFood = this.generateRandomFood(canvasWidth, canvasHeight, total, food);
+      
+      this.food = [...food, ...newFood]
+    }
   }
 
   private generateRandomBots(canvasWidth: number, canvasHeight: number, total: number, species: number): Bot[] {
@@ -66,29 +77,28 @@ export class BotService {
     return bots;
   }
 
-  private generateRandomFood(canvasWidth: number, canvasHeight: number, total: number): Food[] {
-    let food = []
+  private generateRandomFood(canvasWidth: number, canvasHeight: number, total: number, food: Food[]): Food[] {
+    let newFood = []
 
     for(total; total > 0; total--) {
       const position = this.generateRandomStartingPos(canvasWidth, canvasHeight, food);
-      const newFood = new Food(position);
 
-      food.push(newFood);
+      newFood.push(new Food(position));
     }
 
-    return food;
+    return newFood;
   }
 
   private generateRandomSpeciesColor(index: number) {
     return this.colors[index];
   }
 
-  private generateRandomStartingPos(canvasWidth: number, canvasHeight: number, bots: Bot[] | Food[]): { x: number, y: number } {
+  private generateRandomStartingPos(canvasWidth: number, canvasHeight: number, elements: Bot[] | Food[]): { x: number, y: number } {
     const x = _.random(BaseRadius, canvasWidth - BaseRadius)
     const y = _.random(BaseRadius, canvasHeight - BaseRadius)
 
-    if(bots.some(bot => this.gameEngine.areColliding(x, y, bot.x, bot.y, BaseRadius, bot.radius))) {
-      return this.generateRandomStartingPos(canvasWidth, canvasHeight, bots)
+    if(elements.some(el => this.gameEngine.areColliding(x, y, el.x, el.y, BaseRadius, el.radius))) {
+      return this.generateRandomStartingPos(canvasWidth, canvasHeight, elements)
     }
     else return { x, y }
   }
@@ -115,7 +125,7 @@ export class BotService {
     // TODO - reproduce sexually
   }
 
-  private botCollideWithFood(botX: number, botY: number, botRadius: number) {
+  private botCollideWithFood(botX: number, botY: number, botRadius: number): number {
     const food = this.food.find(food => this.gameEngine.areColliding(food.x, food.y, botX, botY, food.radius, botRadius))
     if(food) {
       // bigger bots eat more food
@@ -145,7 +155,6 @@ export class BotService {
       return { ...bot, dead: true }
     }
 
-    
     return {...bot, ...newPosition, ...newFoodAndRadius };
   }
 
