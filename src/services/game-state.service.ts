@@ -8,7 +8,7 @@ import { GameEngineService } from './game-engine.service';
 })
 export class BotService {
 
-  private bots: Bot[];
+  public bots: Bot[];
   private babyBots: Bot[];
   private food: Food[];
   private colors: string[];
@@ -158,7 +158,7 @@ export class BotService {
       parent: _.get(parent, 'id', null),
       ...startingPos,
       color,
-      radius: parent ? BaseRadius : BaseMaxRadius,
+      radius: BaseRadius,
       maxRadius: parent ? this.mutateValue(parent.radius, { min: 4, max: 30 }) : BaseMaxRadius,
       speed: parent ? this.mutateValue(parent.speed, { min: 1, max: 3, mutationChance: 5 }) : BaseSpeed,
       age: 0,
@@ -216,12 +216,13 @@ export class BotService {
     
     if(!pregnant) {
       // chance that the bot will fertilize itself
-      if(_.random(1, 6000) === 1) {
+      if(_.random(1, 3000) === 1) {
         return { pregnant: Date.now() }
       }
     }
     else {
       if(pregnant + gestationTime < Date.now()) {
+        console.log('i gave birth')
         const babyBot = this.generateRandomBot(speciesId, { x, y }, color, bot)
         const speciation = this.speciationCheck()
         this.babyBots.push(Object.assign(babyBot, speciation));
@@ -247,17 +248,21 @@ export class BotService {
       }
     })
     if(collidingWithBot) {
-      // if bot you are hitting is dead or your child, then don't eat it
-      if(collidingWithBot.dead || collidingWithBot.parent === id) {
+      // if bot you are hitting is dead or your child or bot is opportunistic and target is bigger than you, then don't eat it
+      if(collidingWithBot.dead 
+        || collidingWithBot.parent === id 
+        || (predation === PredationBehaviour.OPPORTUNISTIC && collidingWithBot.radius > botRadius)) {
         return 0;
       }
       const combatResult = _.random(1, botRadius + collidingWithBot.radius)
 
       if(combatResult > botRadius && this.botIsAdult(collidingWithBot.radius, collidingWithBot.maxRadius)) {
         collidingWithBot.food += food / 2;
+        console.log('i tried to eat a bot and died')
         return -1
       }
       else {
+        console.log('i ate a bot')
         collidingWithBot.dead = true
         return collidingWithBot.food / 2;
       }
@@ -270,6 +275,7 @@ export class BotService {
       case PredationBehaviour.PASSIVE:
         return false
       case PredationBehaviour.AGGRESSIVE:
+      case PredationBehaviour.OPPORTUNISTIC:
         return true
       default:
         break;
@@ -295,11 +301,22 @@ export class BotService {
     else return 0
   }
 
+  private getSpeedMultiplier(speed) {
+    switch (speed) {
+      case 2:
+        return 3
+      case 3:
+        return 5
+      default:
+        return speed
+    }
+  }
+
   private eatFoodAndGrow({ id, speciesId, x, y, food, growSpeed, speed, radius, maxRadius, predation }: Bot): { food: number, radius: number } {
     const foodEaten = this.botCollideWithFood(x, y, radius)
     const botsEaten = this.botIsAdult(radius, maxRadius) ? this.botCollideWithBot(id, speciesId, x, y, radius, food, predation) : 0
     const foodNeededForGrowth = this.getGrowthFoodRequirement(growSpeed, radius, maxRadius)
-    const foodNeeded = foodNeededForGrowth + ((radius * 2) * (speed * 3));
+    const foodNeeded = foodNeededForGrowth + ((radius * 2) * (this.getSpeedMultiplier(speed) * 3));
 
     if(botsEaten < 0) {
       return
@@ -434,7 +451,7 @@ const BaseMaxRadius = 9
 const BaseSpeed = 1;
 const BaseGrowSpeed = 25;
 const BaseFood = 50000
-const BaseGestationTime = 30000
+const BaseGestationTime = 5000
 
 export interface GameSettings {
   totalBots: number;
@@ -462,5 +479,6 @@ const DevSettings = {
 
 enum PredationBehaviour {
   PASSIVE = 'passive',
+  OPPORTUNISTIC = 'opportunistic',
   AGGRESSIVE = 'aggressive'
 }
