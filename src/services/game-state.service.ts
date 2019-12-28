@@ -165,9 +165,19 @@ export class BotService {
       pregnant: null,
       gestationTime: parent ? this.mutateValue(parent.gestationTime, { min: 1000, max: 10000 }) : BaseGestationTime,
       food: BaseFood,
-      predation: PredationBehaviour.PASSIVE,
+      predation: parent ? this.mutatePredation(parent.predation) : PredationBehaviour.PASSIVE,
       moveStraightFrequency: parent ? this.mutateValue(parent.moveStraightFrequency, { min: 10, max: 500 }) : 75,
     }
+  }
+
+  private mutatePredation(predation: PredationBehaviour): PredationBehaviour {
+    if(_.random(1, 100) === 1) {
+      const predationValues = _.values(PredationBehaviour);
+      const dieRoll = _.random(0, predationValues.length - 1)
+      console.log('mutatePredation', predationValues[dieRoll])
+      return predationValues[dieRoll]
+    }
+    else return predation
   }
 
   private speciationCheck() {
@@ -253,8 +263,13 @@ export class BotService {
   }
 
   private botIsAggressive(predation: PredationBehaviour): boolean {
-    if(predation === PredationBehaviour.PASSIVE) {
-      return
+    switch (predation) {
+      case PredationBehaviour.PASSIVE:
+        return false
+      case PredationBehaviour.AGGRESSIVE:
+        return true
+      default:
+        break;
     }
   }
 
@@ -444,4 +459,5 @@ const DevSettings = {
 
 enum PredationBehaviour {
   PASSIVE = 'passive',
+  AGGRESSIVE = 'aggressive'
 }
