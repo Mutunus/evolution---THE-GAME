@@ -98,7 +98,7 @@ export class BotService {
   }
 
   private spawnFood(canvasWidth: number, canvasHeight: number, total: number, food: Food[]): void {
-    if(_.random(1, 60) === 1) {
+    if(_.random(1, 15) === 1) {
       const newFood = this.generateRandomFood(canvasWidth, canvasHeight, total, food);
       
       this.food = [...food, ...newFood]
@@ -158,8 +158,8 @@ export class BotService {
       parent: _.get(parent, 'id', null),
       ...startingPos,
       color,
-      radius: BaseRadius,
-      maxRadius: parent ? this.mutateValue(parent.radius, { min: 4, max: 30 }) : BaseMaxRadius,
+      radius: parent ? BaseRadius : BaseMaxRadius,
+      maxRadius: parent ? this.mutateValue(parent.radius, { min: 7, max: 30 }) : BaseMaxRadius,
       speed: parent ? this.mutateValue(parent.speed, { min: 1, max: 3, mutationChance: 5 }) : BaseSpeed,
       age: 0,
       growSpeed: parent ? this.mutateValue(parent.growSpeed, { min: 5, max: 200 }) : BaseGrowSpeed,
@@ -254,17 +254,21 @@ export class BotService {
         || (predation === PredationBehaviour.OPPORTUNISTIC && collidingWithBot.radius > botRadius)) {
         return 0;
       }
-      const combatResult = _.random(1, botRadius + collidingWithBot.radius)
+     // const combatResult = _.random(1, botRadius + collidingWithBot.radius)
 
-      if(combatResult > botRadius && this.botIsAdult(collidingWithBot.radius, collidingWithBot.maxRadius)) {
-        collidingWithBot.food += food / 2;
+      const attackerWin = this.gameEngine.botCombatResolver(botRadius, predation, collidingWithBot.radius, collidingWithBot.predation)
+
+      if(!attackerWin && this.botIsAdult(collidingWithBot.radius, collidingWithBot.maxRadius)) {
+        if(collidingWithBot.predation != PredationBehaviour.PASSIVE) {
+          collidingWithBot.food += food;
+        }
         console.log('i tried to eat a bot and died')
         return -1
       }
       else {
         console.log('i ate a bot')
         collidingWithBot.dead = true
-        return collidingWithBot.food / 2;
+        return collidingWithBot.food;
       }
     }
     return 0
@@ -446,7 +450,7 @@ export class Food {
   }
 }
 
-const BaseRadius = 6
+const BaseRadius = 5
 const BaseMaxRadius = 9
 const BaseSpeed = 1;
 const BaseGrowSpeed = 25;
@@ -477,7 +481,7 @@ const DevSettings = {
   speciationChance: 1
 }
 
-enum PredationBehaviour {
+export enum PredationBehaviour {
   PASSIVE = 'passive',
   OPPORTUNISTIC = 'opportunistic',
   AGGRESSIVE = 'aggressive'
