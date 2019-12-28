@@ -173,7 +173,7 @@ export class BotService {
     }
   }
 
-  private mutatePredation(predation: PredationBehaviour): PredationBehaviour {
+  private mutatePredation(predation: PredationBehaviour): string {
     if(_.random(1, 100) === 1) {
       const predationValues = _.values(PredationBehaviour);
       const dieRoll = _.random(0, predationValues.length - 1)
@@ -444,7 +444,7 @@ export class Food {
   constructor(params = {}) {
     this.x = _.get(params, 'x', 10);
     this.y = _.get(params, 'y', 10);
-    this.food = _.get(params, 'food', 50000);
+    this.food = _.get(params, 'food', 100000);
     this.radius = _.get(params, 'radius', 8);
     this.color = _.get(params, 'color', '#65ff00')
   }

@@ -28,10 +28,13 @@ export class GameEngineService {
     const attackerAdvantage = attackerRadius > defenderRadius;
     const attackerMultiplier = attackerAdvantage ? this.determineCombatMultiplier(attackerRadius, attackerPredation, defenderRadius, defenderPredation) : 1
     const defenderMultiplier = attackerAdvantage ? 1 : this.determineCombatMultiplier(defenderRadius, defenderPredation, attackerRadius, attackerPredation)
-    const attackRoll = _.random(1, attackerRadius * attackerMultiplier)
-    const defendRoll = _.random(1, defenderRadius * defenderMultiplier)
+    const attackRoll = _.random(1, _.ceil(attackerRadius * attackerMultiplier))
+    const defendRoll = _.random(1, _.ceil(defenderRadius * defenderMultiplier))
     const attackerWin = attackRoll > defendRoll;
 
+    console.log(attackerRadius, defenderRadius)
+    console.log(attackerMultiplier, defenderMultiplier)
+    console.log(attackRoll, defendRoll)
     return attackerWin
   }
 

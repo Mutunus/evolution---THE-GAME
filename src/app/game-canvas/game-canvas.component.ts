@@ -11,18 +11,30 @@ export class GameCanvasComponent implements OnInit {
   @ViewChild('gameCanvas', {static: false}) gameCanvas;
 
   constructor(
-    private BotService: BotService
+    private botService: BotService
   ) {
   }
 
   ngOnInit() {
-    //document.addEventListener('mousemove', e => console.log(e.offsetX, e.offsetY))
+    const canvas = document.querySelector('canvas')
+
+    canvas.width = innerWidth
+    canvas.height = innerHeight
+
+    addEventListener('resize', () => {
+      canvas.width = innerWidth
+      canvas.height = innerHeight
+    
+      this.botService.restart()
+    })
   }
 
   ngAfterViewInit() {
-    const canvas = this.gameCanvas.nativeElement;
-
     this.go();
+  }
+
+  logBots() {
+    console.log(this.botService.bots)
   }
 
   getCanvasContext() {
@@ -47,7 +59,7 @@ export class GameCanvasComponent implements OnInit {
   go = () => {
     const canvas = this.getCanvasEl();
     const ctx = this.getCanvasContext();
-    const newMapState = this.BotService.nextTurn(canvas.width, canvas.height);
+    const newMapState = this.botService.nextTurn(canvas.width, canvas.height);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     newMapState.forEach(state => this.drawBots(state));

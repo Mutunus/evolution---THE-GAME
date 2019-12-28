@@ -4,13 +4,15 @@
   height: 100%;
 }
 
-div {
+.main-cont {
   height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-canvas {
-
+header {
+  position: absolute;
+  top: 20px;
+  left: 10px;
 }
