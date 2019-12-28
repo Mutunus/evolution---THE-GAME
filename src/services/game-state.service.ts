@@ -35,7 +35,7 @@ export class BotService {
 
   public nextTurn(canvasWidth: number, canvasHeight: number): Bot[] | Food[] {
     if(!this.bots) {
-      this.food = this.generateRandomFood(canvasWidth, canvasHeight, this.settings.totalFood, [])
+      this.food = this.generateRandomFood(canvasWidth, canvasHeight, this.settings.totalFood)
       this.bots = this.generateRandomBots(canvasWidth, canvasHeight, this.settings.totalBots, this.settings.totalSpecies);
     }
     else {
@@ -113,7 +113,7 @@ export class BotService {
       const speciesColor = this.generateRandomSpeciesColor(species);
 
       for(let i = botsPerSpecies; i > 0; i--) {
-        const botPos = this.generateRandomStartingPos(canvasWidth, canvasHeight, bots);
+        const botPos = this.generateRandomStartingPos(canvasWidth, canvasHeight, bots, BaseRadius);
         const newBot = this.generateRandomBot(speciesId, botPos, speciesColor);
         bots.push(newBot);
       }
@@ -122,11 +122,11 @@ export class BotService {
     return bots;
   }
 
-  private generateRandomFood(canvasWidth: number, canvasHeight: number, total: number, food: Food[]): Food[] {
+  private generateRandomFood(canvasWidth: number, canvasHeight: number, total: number, food?: Food[]): Food[] {
     let newFood = []
 
     for(total; total > 0; total--) {
-      const position = this.generateRandomStartingPos(canvasWidth, canvasHeight, food);
+      const position = this.generateRandomStartingPos(canvasWidth, canvasHeight, food || newFood, 8);
 
       newFood.push(new Food(position));
     }
@@ -138,12 +138,12 @@ export class BotService {
     return this.colors[index];
   }
 
-  private generateRandomStartingPos(canvasWidth: number, canvasHeight: number, elements: Bot[] | Food[]): { x: number, y: number } {
-    const x = _.random(BaseRadius, canvasWidth - BaseRadius)
-    const y = _.random(BaseRadius, canvasHeight - BaseRadius)
+  private generateRandomStartingPos(canvasWidth: number, canvasHeight: number, elements: Bot[] | Food[], radius): { x: number, y: number } {
+    const x = _.random(radius, canvasWidth - radius)
+    const y = _.random(radius, canvasHeight - radius)
 
-    if(elements.some(el => this.gameEngine.areColliding(x, y, el.x, el.y, BaseRadius, el.radius))) {
-      return this.generateRandomStartingPos(canvasWidth, canvasHeight, elements)
+    if(elements.some(el => this.gameEngine.areColliding(x, y, el.x, el.y, radius, el.radius))) {
+      return this.generateRandomStartingPos(canvasWidth, canvasHeight, elements, radius)
     }
     else return { x, y }
   }
@@ -406,7 +406,7 @@ export class Food {
     this.x = _.get(params, 'x', 10);
     this.y = _.get(params, 'y', 10);
     this.food = _.get(params, 'food', 50000);
-    this.radius = _.get(params, 'radius', 10);
+    this.radius = _.get(params, 'radius', 8);
     this.color = _.get(params, 'color', '#65ff00')
   }
 }
