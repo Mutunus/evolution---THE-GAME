@@ -173,12 +173,13 @@ export class BotService {
     }
   }
 
-  private mutatePredation(predation: PredationBehaviour): string {
+  private mutatePredation(predation: PredationBehaviour): PredationBehaviour {
     if(_.random(1, 100) === 1) {
       const predationValues = _.values(PredationBehaviour);
+      console.log(predationValues)
       const dieRoll = _.random(0, predationValues.length - 1)
       console.log('mutatePredation', predationValues[dieRoll])
-      return predationValues[dieRoll]
+      return predationValues[dieRoll] as PredationBehaviour
     }
     else return predation
   }
