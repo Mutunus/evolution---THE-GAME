@@ -67,8 +67,11 @@ export class BotService {
       return bot
     }
 
-    const newPosition = this.calcPostion(bot, canvasWidth, canvasHeight);
     const newFoodAndRadius = this.eatFoodAndGrow(bot)
+    // if bot gained more food than it used then do not move
+    const newPosition = _.get(newFoodAndRadius, 'food') < bot.food
+    ? this.calcPostion(bot, canvasWidth, canvasHeight)
+    : null
     const newAge = this.ageBots(bot)
     // if any of these returned false, then the bot is a dead mofo
     if(!newFoodAndRadius) {
