@@ -8,23 +8,35 @@ import { GameEngineService } from './game-engine.service';
 })
 export class BotService {
 
-  public bots: Bot[];
+  private bots: Bot[];
   private babyBots: Bot[];
-  public food: Food[];
-
+  private food: Food[];
   private colors: string[];
+  private settings: GameSettings;
 
   constructor(
-    private gameEngine: GameEngineService
+    private gameEngine: GameEngineService,
   ) {
     this.generateRandomColors();
     this.babyBots = [];
+    this.settings = DevSettings
+  }
+
+
+  public init(canvasWidth: number, canvasHeight: number) {
+    this.restart()
+    this.nextTurn(canvasWidth, canvasHeight)
+  }
+
+  public restart() {
+    this.bots = null
+    this.food = null
   }
 
   public nextTurn(canvasWidth: number, canvasHeight: number): Bot[] | Food[] {
     if(!this.bots) {
-      this.food = this.generateRandomFood(canvasWidth, canvasHeight, 10, [])
-      this.bots = this.generateRandomBots(canvasWidth, canvasHeight, 40, 4);
+      this.food = this.generateRandomFood(canvasWidth, canvasHeight, this.settings.totalFood, [])
+      this.bots = this.generateRandomBots(canvasWidth, canvasHeight, this.settings.totalBots, this.settings.totalSpecies);
     }
     else {
       this.bots = this.bots
@@ -35,10 +47,12 @@ export class BotService {
       this.food = this.food.filter(food => !food.dead)
     }
     
+    // TODO - mutation
     // TODO - form input for settings
     // TODO - spatial awareness
-    // TODO - resolve combat
     // TODO - reproduce sexually
+
+    // TODO - mouse click adds new species
 
     // if any of the bots have given birth then add them to the bots array
     if(this.babyBots.length) {
@@ -49,18 +63,22 @@ export class BotService {
   }
 
   private botNextTurn(bot: Bot, canvasWidth: number, canvasHeight: number): Bot {
-    // TODO - do bot stuff, mutate state
+    if(bot.dead) {
+      return bot
+    }
+
     const newPosition = this.calcPostion(bot, canvasWidth, canvasHeight);
     const newFoodAndRadius = this.eatFoodAndGrow(bot)
     const newAge = this.ageBots(bot)
     // if any of these returned false, then the bot is a dead mofo
     if(!newFoodAndRadius) {
+      console.log('oh dear, i starved')
       return { ...bot, dead: true }
     }
     
     const newPregnant = this.reproduce(bot)
     
-    return {...bot, ...newPosition, ...newFoodAndRadius, ...newAge, ...newPregnant };
+    return Object.assign(bot, {...newPosition, ...newFoodAndRadius, ...newAge, ...newPregnant });
   }
 
   private addBabyBots(): void {
@@ -68,8 +86,12 @@ export class BotService {
     this.babyBots = []
   }
 
-  generateRandomColors() {
-    this.colors = _.fill(Array(10), null).map(x => '#'+Math.floor(Math.random()*16777215).toString(16))
+  private generateRandomColors() {
+    this.colors = _.fill(Array(10), null).map(x => this.generateRandomColor())
+  }
+
+  private generateRandomColor(): string {
+    return '#'+Math.floor(Math.random()*16777215).toString(16)
   }
 
   private spawnFood(canvasWidth: number, canvasHeight: number, total: number, food: Food[]): void {
@@ -126,37 +148,70 @@ export class BotService {
     else return { x, y }
   }
 
-  private generateRandomBot(speciesId: string, startingPos: { x: number, y: number }, color: string): Bot {
+  private generateRandomBot(speciesId: string, startingPos: { x: number, y: number }, color: string, parent?: Bot): Bot {
     return {
+      id: v4(),
       speciesId,
+      parent: _.get(parent, 'id', null),
       ...startingPos,
       color,
-      radius: BaseRadius,
-      maxRadius: BaseMaxRadius,
-      speed: BaseSpeed,
+      radius: parent ? BaseRadius : BaseMaxRadius,
+      maxRadius: parent ? this.mutateValue(parent.radius, { min: 4, max: 30 }) : BaseMaxRadius,
+      speed: parent ? this.mutateValue(parent.speed, { min: 1, max: 3, mutationChance: 5 }) : BaseSpeed,
       age: 0,
-      growSpeed: BaseGrowSpeed,
+      growSpeed: parent ? this.mutateValue(parent.growSpeed, { min: 5, max: 200 }) : BaseGrowSpeed,
       dx: _.random(0, 1) ? 1 : -1, 
       dy: _.random(0, 1) ? 1 : -1, 
       pregnant: null,
-      gestationTime: BaseGestationTime,
-      food: BaseFood
+      gestationTime: parent ? this.mutateValue(parent.gestationTime, { min: 1000, max: 10000 }) : BaseGestationTime,
+      food: BaseFood,
+      predation: PredationBehaviour.PASSIVE
     }
   }
 
-  private reproduce({ speciesId, pregnant, gestationTime, x, y, color, radius, maxRadius }: Bot): { pregnant: number } {
+  private speciationCheck() {
+    if(_.random(1, 100) <= this.settings.speciationChance) {
+      return {
+        speciesId: v4(),
+        color: this.generateRandomColor()
+      }
+    }
+  }
+
+  private mutateValue(value: number, { maxFluctuation = 10, mutationChance = this.settings.mutationChance, min, max }: { maxFluctuation?: number, min?: number, max?: number, mutationChance?: number }): number {
+    const dieRoll = _.random(1, 100);
+
+    if(dieRoll > mutationChance) {
+      return value;
+    }
+
+    const percentageChange = _.random(0, maxFluctuation);
+    const valueChange = _.ceil((value / 100) * percentageChange);
+    const result = _.random(0, 1)
+      ? value - valueChange
+      : value + valueChange
+    console.log('mutation', value, result)
+    if(max && result > max) return max;
+    if(min && result < min) return min;
+    return result;
+  }
+
+  private reproduce(bot: Bot): { pregnant: number } {
+    const { speciesId, pregnant, gestationTime, x, y, color, radius, maxRadius } = bot;
+
     if(!this.botIsAdult(radius, maxRadius)) return
     
     if(!pregnant) {
       // chance that the bot will fertilize itself
-      if(_.random(1, 600) === 1) {
+      if(_.random(1, 6000) === 1) {
         return { pregnant: Date.now() }
       }
     }
     else {
       if(pregnant + gestationTime < Date.now()) {
-        const babyBot = this.generateRandomBot(speciesId, { x, y }, color)
-        this.babyBots.push(babyBot);
+        const babyBot = this.generateRandomBot(speciesId, { x, y }, color, bot)
+        const speciation = this.speciationCheck()
+        this.babyBots.push(Object.assign(babyBot, speciation));
 
         return { pregnant: null }
       }
@@ -166,6 +221,31 @@ export class BotService {
   private botIsAdult(radius: number, maxRadius: number): boolean {
     // if bot is 80% size of max size, then it is considered an adult
     return (radius / maxRadius) * 100 > 80
+  }
+
+  private botCollideWithBot(id: string, speciesId: string, botX: number, botY: number, botRadius: number, food: number): number {
+    const collidingWithBot = this.bots.find(bot => {
+      if(this.gameEngine.areColliding(bot.x, bot.y, botX, botY, bot.radius, botRadius) && bot.id != id && bot.speciesId != speciesId) {
+        return bot
+      }
+    })
+    if(collidingWithBot) {
+      // if bot you are hitting is dead or your child, then don't eat it
+      if(collidingWithBot.dead || collidingWithBot.parent === id) {
+        return 0;
+      }
+      const combatResult = _.random(1, botRadius + collidingWithBot.radius)
+
+      if(combatResult > botRadius && this.botIsAdult(collidingWithBot.radius, collidingWithBot.maxRadius)) {
+        collidingWithBot.food += food / 2;
+        return -1
+      }
+      else {
+        collidingWithBot.dead = true
+        return collidingWithBot.food / 2;
+      }
+    }
+    return 0
   }
 
   private botCollideWithFood(botX: number, botY: number, botRadius: number): number {
@@ -187,18 +267,25 @@ export class BotService {
     else return 0
   }
 
-  private eatFoodAndGrow({ x, y, food, growSpeed, speed, radius, maxRadius }: Bot): { food: number, radius: number } {
+  private eatFoodAndGrow({ id, speciesId, x, y, food, growSpeed, speed, radius, maxRadius }: Bot): { food: number, radius: number } {
     const foodEaten = this.botCollideWithFood(x, y, radius)
+    const botsEaten = this.botIsAdult(radius, maxRadius) ? this.botCollideWithBot(id, speciesId, x, y, radius, food) : 0
     const foodNeededForGrowth = this.getGrowthFoodRequirement(growSpeed, radius, maxRadius)
-    const foodConsumption = foodNeededForGrowth + (radius * (speed * 2));
+    const foodNeeded = foodNeededForGrowth + ((radius * 2) * (speed * 3));
 
-    if(foodConsumption > (food + foodEaten)) {
+    if(botsEaten < 0) {
+      return
+    }
+
+    const totalFoodEaten = food + foodEaten + botsEaten 
+
+    if(foodNeeded > totalFoodEaten) {
       return
     }
     else {
       const newRadius = foodNeededForGrowth ? radius + 1 : radius;
 
-      return { food: (food + foodEaten) - foodConsumption, radius: newRadius }
+      return { food: totalFoodEaten - foodNeeded, radius: newRadius }
     }
   }
 
@@ -209,10 +296,10 @@ export class BotService {
   private getGrowthFoodRequirement(growSpeed: number, radius: number, maxRadius: number): number {
     if(radius === maxRadius) return 0;
 
-    const compareNum = 5000 - growSpeed;
-    const dieRoll = _.random(0, 5000);
+    const dieRoll = _.random(1, 120000);
 
-    if(dieRoll > compareNum) {
+    if(dieRoll < growSpeed) {
+      console.log('i grow')
       return growSpeed * 3
     }
     else return 0
@@ -276,7 +363,9 @@ export class BotService {
 
 
 export interface Bot {
+  id: string;
   speciesId: string;
+  parent: string;
   x: number;
   y: number;
   dx: number;
@@ -290,6 +379,7 @@ export interface Bot {
   pregnant: number;
   gestationTime: number;
   food: number;
+  predation: PredationBehaviour;
   dead?: boolean;
 }
 
@@ -304,15 +394,43 @@ export class Food {
   constructor(params = {}) {
     this.x = _.get(params, 'x', 10);
     this.y = _.get(params, 'y', 10);
-    this.food = _.get(params, 'food', 25000);
+    this.food = _.get(params, 'food', 50000);
     this.radius = _.get(params, 'radius', 10);
     this.color = _.get(params, 'color', '#65ff00')
   }
 }
 
 const BaseRadius = 6
-const BaseMaxRadius = 20
+const BaseMaxRadius = 9
 const BaseSpeed = 1;
 const BaseGrowSpeed = 25;
 const BaseFood = 50000
-const BaseGestationTime = 5000
+const BaseGestationTime = 30000
+
+export interface GameSettings {
+  totalBots: number;
+  totalSpecies: number;
+  totalFood: number;
+  mutationChance: number;
+  speciationChance: number;
+}
+
+const DefaultSettings = {
+  totalBots: 40,
+  totalSpecies: 4,
+  totalFood: 30,
+  mutationChance: 2,
+  speciationChance: 1,
+}
+
+const DevSettings = {
+  totalBots: 80,
+  totalSpecies: 8,
+  totalFood: 40,
+  mutationChance: 2,
+  speciationChance: 1
+}
+
+enum PredationBehaviour {
+  PASSIVE = 'passive',
+}
