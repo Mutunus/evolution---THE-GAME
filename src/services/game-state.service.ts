@@ -165,7 +165,8 @@ export class BotService {
       pregnant: null,
       gestationTime: parent ? this.mutateValue(parent.gestationTime, { min: 1000, max: 10000 }) : BaseGestationTime,
       food: BaseFood,
-      predation: PredationBehaviour.PASSIVE
+      predation: PredationBehaviour.PASSIVE,
+      moveStraightFrequency: parent ? this.mutateValue(parent.moveStraightFrequency, { min: 10, max: 500 }) : 75,
     }
   }
 
@@ -190,7 +191,6 @@ export class BotService {
     const result = _.random(0, 1)
       ? value - valueChange
       : value + valueChange
-    console.log('mutation', value, result)
     if(max && result > max) return max;
     if(min && result < min) return min;
     return result;
@@ -223,7 +223,11 @@ export class BotService {
     return (radius / maxRadius) * 100 > 80
   }
 
-  private botCollideWithBot(id: string, speciesId: string, botX: number, botY: number, botRadius: number, food: number): number {
+  private botCollideWithBot(id: string, speciesId: string, botX: number, botY: number, botRadius: number, food: number, predation: PredationBehaviour): number {
+    if(!this.botIsAggressive(predation)) {
+      return 0
+    }
+
     const collidingWithBot = this.bots.find(bot => {
       if(this.gameEngine.areColliding(bot.x, bot.y, botX, botY, bot.radius, botRadius) && bot.id != id && bot.speciesId != speciesId) {
         return bot
@@ -248,6 +252,12 @@ export class BotService {
     return 0
   }
 
+  private botIsAggressive(predation: PredationBehaviour): boolean {
+    if(predation === PredationBehaviour.PASSIVE) {
+      return
+    }
+  }
+
   private botCollideWithFood(botX: number, botY: number, botRadius: number): number {
     const food = this.food.find(food => this.gameEngine.areColliding(food.x, food.y, botX, botY, food.radius, botRadius))
     if(food) {
@@ -267,9 +277,9 @@ export class BotService {
     else return 0
   }
 
-  private eatFoodAndGrow({ id, speciesId, x, y, food, growSpeed, speed, radius, maxRadius }: Bot): { food: number, radius: number } {
+  private eatFoodAndGrow({ id, speciesId, x, y, food, growSpeed, speed, radius, maxRadius, predation }: Bot): { food: number, radius: number } {
     const foodEaten = this.botCollideWithFood(x, y, radius)
-    const botsEaten = this.botIsAdult(radius, maxRadius) ? this.botCollideWithBot(id, speciesId, x, y, radius, food) : 0
+    const botsEaten = this.botIsAdult(radius, maxRadius) ? this.botCollideWithBot(id, speciesId, x, y, radius, food, predation) : 0
     const foodNeededForGrowth = this.getGrowthFoodRequirement(growSpeed, radius, maxRadius)
     const foodNeeded = foodNeededForGrowth + ((radius * 2) * (speed * 3));
 
@@ -306,13 +316,13 @@ export class BotService {
   }
 
   private calcPostion(bot: Bot, canvasWidth: number, canvasHeight: number) {
-    const { x, y, dx, dy, radius, speed } = bot;
-    const newPosition = this.getMovementVals({ x, y, dx, dy }, radius, speed, canvasWidth, canvasHeight);
+    const { x, y, dx, dy, radius, speed, moveStraightFrequency } = bot;
+    const newPosition = this.getMovementVals({ x, y, dx, dy }, moveStraightFrequency, radius, speed, canvasWidth, canvasHeight);
 
     return newPosition;
   }
 
-  private getMovementVals({ x: currentX, y: currentY, dx: currentDx, dy: currentDy }: Partial<Bot>, radius: number, speed: number, canvasWidth: number, canvasHeight: number): { x: number, y: number, dx: number, dy: number } {
+  private getMovementVals({ x: currentX, y: currentY, dx: currentDx, dy: currentDy }: Partial<Bot>, moveStraightFrequency: number, radius: number, speed: number, canvasWidth: number, canvasHeight: number): { x: number, y: number, dx: number, dy: number } {
     let dx = currentDx;
     let dy = currentDy;
 
@@ -331,7 +341,7 @@ export class BotService {
     }
 
     // 9/10 keep going same direction
-    if(_.random(0, 50) > 1) {
+    if(_.random(0, moveStraightFrequency) > 1) {
       return { x: currentX + (dx * speed), y: currentY + (dy * speed), dx, dy }
     }
     else {
@@ -380,6 +390,7 @@ export interface Bot {
   gestationTime: number;
   food: number;
   predation: PredationBehaviour;
+  moveStraightFrequency: number;
   dead?: boolean;
 }
 
@@ -418,7 +429,7 @@ export interface GameSettings {
 const DefaultSettings = {
   totalBots: 40,
   totalSpecies: 4,
-  totalFood: 30,
+  totalFood: 250,
   mutationChance: 2,
   speciationChance: 1,
 }
@@ -426,7 +437,7 @@ const DefaultSettings = {
 const DevSettings = {
   totalBots: 80,
   totalSpecies: 8,
-  totalFood: 40,
+  totalFood: 250,
   mutationChance: 2,
   speciationChance: 1
 }
