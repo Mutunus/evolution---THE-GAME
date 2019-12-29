@@ -258,14 +258,14 @@ export class BotService {
 
       const attackerWin = this.gameEngine.botCombatResolver(botRadius, botMaxRadius, predation, collidingWithBot.radius, collidingWithBot.maxRadius, collidingWithBot.predation)
 
-      if(!attackerWin && this.gameEngine.botIsAdult(collidingWithBot.radius, collidingWithBot.maxRadius)) {
+      if(!attackerWin) {
         if(collidingWithBot.predation != PredationBehaviour.PASSIVE) {
           collidingWithBot.food += _.ceil(food / 1.5);
         }
         console.log('i tried to eat a bot and died')
         return -1
       }
-      else {
+      else if(attackerWin) {
         console.log('i ate a bot')
         collidingWithBot.dead = true
         return _.ceil(collidingWithBot.food / 1.5);
