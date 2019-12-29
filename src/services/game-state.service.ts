@@ -47,6 +47,7 @@ export class BotService {
       this.food = this.food.filter(food => !food.dead)
     }
     
+    // TODO - die of old age
     // TODO - mutation
     // TODO - form input for settings
     // TODO - spatial awareness
@@ -75,7 +76,7 @@ export class BotService {
     const newAge = this.ageBots(bot)
     // if any of these returned false, then the bot is a dead mofo
     if(!newFoodAndRadius) {
-      console.log('oh dear, i starved')
+      // console.log('oh dear, i starved')
       return { ...bot, dead: true }
     }
     
@@ -159,7 +160,7 @@ export class BotService {
       ...startingPos,
       color,
       radius: parent ? BaseRadius : BaseMaxRadius,
-      maxRadius: parent ? this.mutateValue(parent.radius, { min: 7, max: 30 }) : BaseMaxRadius,
+      maxRadius: parent ? this.mutateValue(parent.maxRadius, { min: 7, max: 30 }) : BaseMaxRadius,
       speed: parent ? this.mutateValue(parent.speed, { min: 1, max: 3, mutationChance: 5 }) : BaseSpeed,
       age: 0,
       growSpeed: parent ? this.mutateValue(parent.growSpeed, { min: 5, max: 200 }) : BaseGrowSpeed,
@@ -175,7 +176,7 @@ export class BotService {
 
   private mutatePredation(predation: PredationBehaviour): PredationBehaviour {
     if(_.random(1, 100) === 1) {
-      const predationValues = _.values(PredationBehaviour);
+      const predationValues = _.pull(_.values(PredationBehaviour), predation);
       const dieRoll = _.random(0, predationValues.length - 1)
       console.log('mutatePredation', predationValues[dieRoll])
       return predationValues[dieRoll] as PredationBehaviour
@@ -204,6 +205,7 @@ export class BotService {
     const result = _.random(0, 1)
       ? value - valueChange
       : value + valueChange
+
     if(max && result > max) return max;
     if(min && result < min) return min;
     return result;
@@ -222,7 +224,7 @@ export class BotService {
     }
     else {
       if(pregnant + gestationTime < Date.now()) {
-        console.log('i gave birth')
+        //console.log('i gave birth')
         const babyBot = this.generateRandomBot(speciesId, { x, y }, color, bot)
         const speciation = this.speciationCheck()
         this.babyBots.push(Object.assign(babyBot, speciation));
@@ -235,7 +237,8 @@ export class BotService {
   
 
   private botCollideWithBot(id: string, speciesId: string, botX: number, botY: number, botRadius: number, botMaxRadius: number, food: number, predation: PredationBehaviour): number {
-    if(!this.botIsAggressive(predation)) {
+    // if bot is not aggressive or is a child then bot does not attack
+    if(!this.gameEngine.botIsAggressive(predation) || !this.gameEngine.botIsAdult(botRadius, botMaxRadius)) {
       return 0
     }
 
@@ -269,18 +272,6 @@ export class BotService {
       }
     }
     return 0
-  }
-
-  private botIsAggressive(predation: PredationBehaviour): boolean {
-    switch (predation) {
-      case PredationBehaviour.PASSIVE:
-        return false
-      case PredationBehaviour.AGGRESSIVE:
-      case PredationBehaviour.OPPORTUNISTIC:
-        return true
-      default:
-        break;
-    }
   }
 
   private botCollideWithFood(botX: number, botY: number, botRadius: number): number {
@@ -317,7 +308,7 @@ export class BotService {
     const foodEaten = this.botCollideWithFood(x, y, radius)
     const botsEaten = this.gameEngine.botIsAdult(radius, maxRadius) ? this.botCollideWithBot(id, speciesId, x, y, radius, maxRadius, food, predation) : 0
     const foodNeededForGrowth = this.getGrowthFoodRequirement(growSpeed, radius, maxRadius)
-    const foodNeeded = foodNeededForGrowth + ((radius * 2) * (this.getSpeedMultiplier(speed) * 3));
+    const foodNeeded = foodNeededForGrowth + (_.ceil(radius * 1.5) * (this.getSpeedMultiplier(speed) * 3));
 
     if(botsEaten < 0) {
       return
@@ -345,7 +336,7 @@ export class BotService {
     const dieRoll = _.random(1, 120000);
 
     if(dieRoll < growSpeed) {
-      console.log('i grow')
+      // console.log('i grow')
       return growSpeed * 3
     }
     else return 0

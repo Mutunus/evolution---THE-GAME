@@ -27,7 +27,7 @@ export class GameEngineService {
     // TODO - take into account predation style
     const attackerAdvantage = attackerRadius >= defenderRadius;
     const attackerMultiplier = attackerAdvantage ? this.determineCombatMultiplier(attackerRadius, attackerMaxRadius, attackerPredation, defenderRadius, defenderMaxRadius, defenderPredation) : 1
-    const defenderMultiplier = attackerAdvantage ? 1 : this.determineCombatMultiplier(defenderRadius, defenderMaxRadius, defenderPredation, attackerRadius, attackerMaxRadius, attackerPredation)
+    const defenderMultiplier = attackerAdvantage ? this.botIsAggressive(defenderPredation) ? 1 : 0.75 : this.determineCombatMultiplier(defenderRadius, defenderMaxRadius, defenderPredation, attackerRadius, attackerMaxRadius, attackerPredation)
     const attackRoll = _.random(1, _.ceil(attackerRadius * attackerMultiplier))
     const defendRoll = _.random(1, _.ceil(defenderRadius * defenderMultiplier))
     const attackerWin = attackRoll > defendRoll;
@@ -37,6 +37,18 @@ export class GameEngineService {
     console.log(attackRoll, defendRoll)
     return attackerWin
   }
+
+  public botIsAggressive(predation: PredationBehaviour): boolean {
+    switch (predation) {
+      case PredationBehaviour.PASSIVE:
+        return false
+      case PredationBehaviour.AGGRESSIVE:
+      case PredationBehaviour.OPPORTUNISTIC:
+        return true
+      default:
+        break;
+    }
+  } 
 
   private determineCombatMultiplier(attackerRadius: number, attackerMaxRadius: number, attackerPredation: PredationBehaviour, defenderRadius: number, defenderMaxRadius: number, defenderPredation: PredationBehaviour): number {
     const passiveDefender = defenderPredation === PredationBehaviour.PASSIVE ? 0.5 : 0;
