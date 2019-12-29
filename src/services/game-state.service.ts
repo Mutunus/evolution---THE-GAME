@@ -218,7 +218,7 @@ export class BotService {
     
     if(!pregnant) {
       // chance that the bot will fertilize itself
-      if(_.random(1, 3000) === 1) {
+      if(_.random(1, 6000) === 1) {
         return { pregnant: Date.now() }
       }
     }
@@ -238,7 +238,7 @@ export class BotService {
 
   private botCollideWithBot(id: string, speciesId: string, botX: number, botY: number, botRadius: number, botMaxRadius: number, food: number, predation: PredationBehaviour): number {
     // if bot is not aggressive or is a child then bot does not attack
-    if(!this.gameEngine.botIsAggressive(predation) || !this.gameEngine.botIsAdult(botRadius, botMaxRadius)) {
+    if(!this.gameEngine.botIsAggressive(predation) || !this.gameEngine.botIsAdult(botRadius, botMaxRadius) || !this.gameEngine.omnivoreIsHungry(predation, food)) {
       return 0
     }
 
@@ -443,7 +443,7 @@ const BaseMaxRadius = 9
 const BaseSpeed = 1;
 const BaseGrowSpeed = 25;
 const BaseFood = 50000
-const BaseGestationTime = 5000
+const BaseGestationTime = 20000
 
 export interface GameSettings {
   totalBots: number;
@@ -472,5 +472,6 @@ const DevSettings = {
 export enum PredationBehaviour {
   PASSIVE = 'passive',
   OPPORTUNISTIC = 'opportunistic',
-  AGGRESSIVE = 'aggressive'
+  AGGRESSIVE = 'aggressive',
+  OMNIVORE = 'omnivore'
 }

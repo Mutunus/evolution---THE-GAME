@@ -35,6 +35,7 @@ export class GameEngineService {
     console.log(_.ceil(attackerRadius * attackerMultiplier), _.ceil(defenderRadius * defenderMultiplier))
     console.log(attackerMultiplier, defenderMultiplier)
     console.log(attackRoll, defendRoll)
+    console.log(attackerWin, attackRoll > defendRoll)
     return attackerWin
   }
 
@@ -44,6 +45,7 @@ export class GameEngineService {
         return false
       case PredationBehaviour.AGGRESSIVE:
       case PredationBehaviour.OPPORTUNISTIC:
+      case PredationBehaviour.OMNIVORE:
         return true
       default:
         break;
@@ -78,6 +80,10 @@ export class GameEngineService {
   public botIsAdult(radius: number, maxRadius: number): boolean {
     // if bot is 80% size of max size, then it is considered an adult
     return (radius / maxRadius) * 100 > 80
+  }
+
+  public omnivoreIsHungry(predation: PredationBehaviour, food: number) {
+    return predation === PredationBehaviour.OMNIVORE && food < 50000
   }
 
 
