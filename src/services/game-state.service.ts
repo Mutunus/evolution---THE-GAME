@@ -218,7 +218,8 @@ export class BotService {
     
     if(!pregnant) {
       // chance that the bot will fertilize itself
-      if(_.random(1, 6000) === 1) {
+      if(_.random(1, 2000) === 1) {
+      //if(_.random(1, 6000) === 1) {
         return { pregnant: Date.now() }
       }
     }
@@ -238,7 +239,12 @@ export class BotService {
 
   private botCollideWithBot(id: string, speciesId: string, botX: number, botY: number, botRadius: number, botMaxRadius: number, food: number, predation: PredationBehaviour): number {
     // if bot is not aggressive or is a child then bot does not attack
-    if(!this.gameEngine.botIsAggressive(predation) || !this.gameEngine.botIsAdult(botRadius, botMaxRadius) || !this.gameEngine.omnivoreIsHungry(predation, food)) {
+    if(!this.gameEngine.botIsAggressive(predation) || !this.gameEngine.botIsAdult(botRadius, botMaxRadius)) {
+      return 0
+    }
+
+    // omnivore will eat bots only when hungry
+    if(predation === PredationBehaviour.OMNIVORE && !this.gameEngine.omnivoreIsHungry(predation, food)) {
       return 0
     }
 
@@ -254,7 +260,6 @@ export class BotService {
         || (predation === PredationBehaviour.OPPORTUNISTIC && collidingWithBot.radius > botRadius)) {
         return 0;
       }
-     // const combatResult = _.random(1, botRadius + collidingWithBot.radius)
 
       const attackerWin = this.gameEngine.botCombatResolver(botRadius, botMaxRadius, predation, collidingWithBot.radius, collidingWithBot.maxRadius, collidingWithBot.predation)
 
@@ -443,7 +448,8 @@ const BaseMaxRadius = 9
 const BaseSpeed = 1;
 const BaseGrowSpeed = 25;
 const BaseFood = 50000
-const BaseGestationTime = 20000
+//const BaseGestationTime = 20000
+const BaseGestationTime = 1000
 
 export interface GameSettings {
   totalBots: number;

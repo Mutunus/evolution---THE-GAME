@@ -25,9 +25,8 @@ export class GameEngineService {
 
   public botCombatResolver(attackerRadius: number, attackerMaxRadius: number, attackerPredation: PredationBehaviour, defenderRadius: number, defenderMaxRadius: number, defenderPredation: PredationBehaviour) {
     // TODO - take into account predation style
-    const attackerAdvantage = attackerRadius >= defenderRadius;
-    const attackerMultiplier = attackerAdvantage ? this.determineCombatMultiplier(attackerRadius, attackerMaxRadius, attackerPredation, defenderRadius, defenderMaxRadius, defenderPredation) : 1
-    const defenderMultiplier = attackerAdvantage ? this.botIsAggressive(defenderPredation) ? 1 : 0.75 : this.determineCombatMultiplier(defenderRadius, defenderMaxRadius, defenderPredation, attackerRadius, attackerMaxRadius, attackerPredation)
+    const attackerMultiplier = this.determineCombatMultiplier(attackerRadius, attackerMaxRadius, attackerPredation, defenderRadius, defenderMaxRadius, defenderPredation)
+    const defenderMultiplier = this.determineCombatMultiplier(defenderRadius, defenderMaxRadius, defenderPredation, attackerRadius, attackerMaxRadius, attackerPredation)
     const attackRoll = _.random(1, _.ceil(attackerRadius * attackerMultiplier))
     const defendRoll = _.random(1, _.ceil(defenderRadius * defenderMultiplier))
     const attackerWin = attackRoll > defendRoll;
@@ -55,25 +54,25 @@ export class GameEngineService {
   private determineCombatMultiplier(attackerRadius: number, attackerMaxRadius: number, attackerPredation: PredationBehaviour, defenderRadius: number, defenderMaxRadius: number, defenderPredation: PredationBehaviour): number {
     const passiveDefender = defenderPredation === PredationBehaviour.PASSIVE ? 0.5 : 0;
     const passiveAttacker = attackerPredation === PredationBehaviour.PASSIVE;
-    const defenderIsChild = this.botIsAdult(defenderRadius, defenderMaxRadius) ? 0 : 0.5;
-    const attackerIsChild = this.botIsAdult(attackerRadius, attackerMaxRadius)
+    const defenderIsAdult = this.botIsAdult(defenderRadius, defenderMaxRadius) ? 0 : 0.5;
+    const attackerIsAdult = this.botIsAdult(attackerRadius, attackerMaxRadius)
     const attackerSizeAdvantage = attackerRadius / defenderRadius
 
-    if(passiveAttacker || attackerIsChild) {
-      return 0.75
+    if(passiveAttacker || !attackerIsAdult) {
+      return 0.5
     }
 
     if(attackerSizeAdvantage < 1.2) {
-      return 1 + passiveDefender + defenderIsChild
+      return 1 + passiveDefender + defenderIsAdult
     }
     if(attackerSizeAdvantage < 1.5) {
-      return 1.5 + passiveDefender + defenderIsChild
+      return 1.5 + passiveDefender + defenderIsAdult
     }
     if(attackerSizeAdvantage < 1.75) {
-      return 2 + passiveDefender + defenderIsChild
+      return 2 + passiveDefender + defenderIsAdult
     }
     if(attackerSizeAdvantage >= 1.75) {
-      return 3 + passiveDefender + defenderIsChild
+      return 3 + passiveDefender + defenderIsAdult
     }
   }
 
@@ -82,7 +81,7 @@ export class GameEngineService {
     return (radius / maxRadius) * 100 > 80
   }
 
-  public omnivoreIsHungry(predation: PredationBehaviour, food: number) {
+  public omnivoreIsHungry(predation: PredationBehaviour, food: number): boolean {
     return predation === PredationBehaviour.OMNIVORE && food < 50000
   }
 
